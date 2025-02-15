@@ -61,6 +61,7 @@ mkdir -p $BASE_DEPS_BUILD_DIR && cd $BASE_DEPS_BUILD_DIR
 
 
 check_and_download "https://zlib.net/zlib-1.3.1.tar.xz"
+check_and_download "zstd-dev.zip" "https://github.com/facebook/zstd/archive/refs/heads/dev.zip"
 check_and_download "https://github.com/ianlancetaylor/libbacktrace/archive/$LIBBACKTRACE.zip" 
 check_and_download "https://ijg.org/files/jpegsrc.v$LIBJPEG.tar.gz" 
 check_and_download "https://downloads.sourceforge.net/project/libpng/libpng16/$LIBPNG/libpng-$LIBPNG.tar.xz" 
@@ -96,7 +97,7 @@ rm -fr "libbacktrace-$LIBBACKTRACE"
 unzip "$LIBBACKTRACE.zip"
 cd "libbacktrace-$LIBBACKTRACE"
 ./configure CC="$CC" --host="$HOST" --build="$BUILD" --prefix="$INSTALLDIR"
-make 
+make "-j$NPROCS"
 make install
 
 cd $BASE_DEPS_BUILD_DIR
@@ -106,7 +107,7 @@ rm -fr zlib-1.3.1
 tar xvf zlib-1.3.1.tar.xz
 cd zlib-1.3.1
 CC=$CC AR=$AR RANLIB=$RANLIB ./configure --prefix=$INSTALLDIR
-make
+make "-j$NPROCS"
 make install
 
 cd $BASE_DEPS_BUILD_DIR
@@ -118,6 +119,36 @@ cd "libpng-$LIBPNG"
 cmake -DCMAKE_TOOLCHAIN_FILE="$SCRIPTDIR/riscv64-toolchain.cmake" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$INSTALLDIR" -DCMAKE_INSTALL_PREFIX="$INSTALLDIR" -DBUILD_SHARED_LIBS=ON -DBUILD_SHARED_LIBS=ON -DPNG_TESTS=OFF -DPNG_STATIC=OFF -DPNG_SHARED=ON -DPNG_TOOLS=OFF -B build -G Ninja
 cmake --build build --parallel
 ninja -C build install
+
+cd $BASE_DEPS_BUILD_DIR
+
+echo "Building libjpeg..."
+rm -fr "jpeg-$LIBJPEG"
+tar xf "jpegsrc.v$LIBJPEG.tar.gz"
+cd "jpeg-$LIBJPEG"
+mkdir build
+cd build
+../configure CC="$CC" --host="$HOST" --build="$BUILD" --prefix="$INSTALLDIR" --disable-static --enable-shared
+make "-j$NPROCS"
+make install
+
+cd $BASE_DEPS_BUILD_DIR
+
+echo "Building LZ4..."
+rm -fr "lz4-$LZ4"
+tar xf "$LZ4.tar.gz"
+cd "lz4-$LZ4"
+cmake -DCMAKE_TOOLCHAIN_FILE="$SCRIPTDIR/riscv64-toolchain.cmake" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$INSTALLDIR" -DCMAKE_INSTALL_PREFIX="$INSTALLDIR" -DBUILD_SHARED_LIBS=ON -DLZ4_BUILD_CLI=OFF -DLZ4_BUILD_LEGACY_LZ4C=OFF -B build-dir -G Ninja build/cmake
+cmake --build build-dir --parallel
+ninja -C build-dir install
+
+cd $BASE_DEPS_BUILD_DIR
+
+# echo "Building Zstandard..."
+# rm -fr "zstd-dev"
+# unzip "zstd-dev.zip"
+# cd "zstd-dev"
+# make CC="$CC" AR="$AR" RANLIB="$RANLIB" PREFIX="$INSTALLDIR" zstd
 
 cd $BASE_DEPS_BUILD_DIR
 
