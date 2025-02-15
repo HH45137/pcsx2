@@ -110,6 +110,8 @@ oprofile_data/
 /deps
 /deps-arm64
 /ipch
+/deps-build-riscv
+/deps-riscv
 
 !/3rdparty/libjpeg/change.log
 /tools/bin

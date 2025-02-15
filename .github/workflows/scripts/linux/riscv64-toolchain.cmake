@@ -1,0 +1,14 @@
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR riscv64)
+
+set(CMAKE_C_COMPILER riscv64-unknown-elf-gcc)
+set(CMAKE_CXX_COMPILER riscv64-unknown-elf-g++)
+set(CMAKE_ASM_COMPILER riscv64-unknown-elf-gcc)
+
+set(CMAKE_OBJCOPY riscv64-unknown-elf-objcopy CACHE INTERNAL "objcopy tool")
+set(CMAKE_OBJDUMP riscv64-unknown-elf-objdump CACHE INTERNAL "objdump tool")
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
