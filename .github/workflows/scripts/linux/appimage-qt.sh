@@ -63,9 +63,9 @@ declare -a REMOVE_LIBS=(
 
 set -e
 
-LINUXDEPLOY=./linuxdeploy-x86_64
-LINUXDEPLOY_PLUGIN_QT=./linuxdeploy-plugin-qt-x86_64
-APPIMAGETOOL=./appimagetool-x86_64
+LINUXDEPLOY=./linuxdeploy-x86_64.AppImage
+LINUXDEPLOY_PLUGIN_QT=./linuxdeploy-plugin-qt-x86_64.AppImage
+APPIMAGETOOL=./appimagetool-x86_64.AppImage
 PATCHELF=patchelf
 
 if [ ! -f "$LINUXDEPLOY" ]; then
@@ -78,11 +78,8 @@ if [ ! -f "$LINUXDEPLOY_PLUGIN_QT" ]; then
 	chmod +x "$LINUXDEPLOY_PLUGIN_QT"
 fi
 
-# Using go-appimage
-# Backported from https://github.com/stenzek/duckstation/pull/3251
 if [ ! -f "$APPIMAGETOOL" ]; then
-	APPIMAGETOOLURL=$(wget -q https://api.github.com/repos/probonopd/go-appimage/releases -O - | sed 's/[()",{} ]/\n/g' | grep -o 'https.*continuous.*tool.*86_64.*mage$' | head -1)
-	"$PCSX2DIR/tools/retry.sh" wget -O "$APPIMAGETOOL" "$APPIMAGETOOLURL"
+	"$PCSX2DIR/tools/retry.sh" wget -O "$APPIMAGETOOL" https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
 	chmod +x "$APPIMAGETOOL"
 fi
 
@@ -190,17 +187,6 @@ echo "Generating AppStream metainfo..."
 mkdir -p "$OUTDIR/usr/share/metainfo"
 "$SCRIPTDIR/generate-metainfo.sh" "$OUTDIR/usr/share/metainfo/net.pcsx2.PCSX2.appdata.xml"
 
-# Copy in AppRun hooks.
-# Unfortunately linuxdeploy is a bit lame and doesn't let us provide our own AppRun hooks, instead
-# they have to come from plugins.. and screw writing one of those just to disable Wayland.
-echo "Copying AppRun hooks..."
-mkdir -p "$OUTDIR/apprun-hooks"
-for hookpath in "$SCRIPTDIR/apprun-hooks"/*; do
-	hookname=$(basename "$hookpath")
-	cp -v "$hookpath" "$OUTDIR/apprun-hooks/$hookname"
-	sed -i -e 's/exec /source "$this_dir"\/apprun-hooks\/"'"$hookname"'"\nexec /' "$OUTDIR/AppRun"
-done
-
 echo "Generating AppImage..."
 GIT_VERSION=$(git tag --points-at HEAD)
 
@@ -213,5 +199,4 @@ if [[ "${GIT_VERSION}" == "" ]]; then
 fi
 
 rm -f "$NAME.AppImage"
-ARCH=x86_64 VERSION="${GIT_VERSION}" "$APPIMAGETOOL" -s "$OUTDIR" && mv ./*.AppImage "$NAME.AppImage"
-
+$APPIMAGETOOL -v "$OUTDIR" "$NAME.AppImage"

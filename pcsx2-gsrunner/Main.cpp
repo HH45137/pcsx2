@@ -113,6 +113,10 @@ bool GSRunner::InitializeConfig()
 	si.SetBoolValue("EmuCore/GS", "FrameLimitEnable", false);
 	si.SetIntValue("EmuCore/GS", "VsyncEnable", false);
 
+	// Force screenshot quality settings to something more performant, overriding any defaults good for users.
+	si.SetIntValue("EmuCore/GS", "ScreenshotFormat", static_cast<int>(GSScreenshotFormat::PNG));
+	si.SetIntValue("EmuCore/GS", "ScreenshotQuality", 10);
+
 	// ensure all input sources are disabled, we're not using them
 	si.SetBoolValue("InputSources", "SDL", false);
 	si.SetBoolValue("InputSources", "XInput", false);
@@ -169,9 +173,23 @@ void Host::SetDefaultUISettings(SettingsInterface& si)
 	// nothing
 }
 
+bool Host::LocaleCircleConfirm()
+{
+	// not running any UI, so no settings requests will come in
+	return false;
+}
+
 std::unique_ptr<ProgressCallback> Host::CreateHostProgressCallback()
 {
 	return ProgressCallback::CreateNullProgressCallback();
+}
+
+void Host::ReportInfoAsync(const std::string_view title, const std::string_view message)
+{
+	if (!title.empty() && !message.empty())
+		INFO_LOG("ReportInfoAsync: {}: {}", title, message);
+	else if (!message.empty())
+		INFO_LOG("ReportInfoAsync: {}", message);
 }
 
 void Host::ReportErrorAsync(const std::string_view title, const std::string_view message)
@@ -517,17 +535,17 @@ bool GSRunner::ParseCommandLineArgs(int argc, char* argv[], VMBootParameters& pa
 				s_settings_interface.SetBoolValue("EmuCore/GS", "dump", true);
 
 				if (str.find("rt") != std::string::npos)
-					s_settings_interface.SetBoolValue("EmuCore/GS", "save", true);
+					s_settings_interface.SetBoolValue("EmuCore/GS", "SaveRT", true);
 				if (str.find("f") != std::string::npos)
-					s_settings_interface.SetBoolValue("EmuCore/GS", "savef", true);
+					s_settings_interface.SetBoolValue("EmuCore/GS", "SaveFrame", true);
 				if (str.find("tex") != std::string::npos)
-					s_settings_interface.SetBoolValue("EmuCore/GS", "savet", true);
+					s_settings_interface.SetBoolValue("EmuCore/GS", "SaveTexture", true);
 				if (str.find("z") != std::string::npos)
-					s_settings_interface.SetBoolValue("EmuCore/GS", "savez", true);
+					s_settings_interface.SetBoolValue("EmuCore/GS", "SaveDepth", true);
 				if (str.find("a") != std::string::npos)
-					s_settings_interface.SetBoolValue("EmuCore/GS", "savea", true);
+					s_settings_interface.SetBoolValue("EmuCore/GS", "SaveAlpha", true);
 				if (str.find("i") != std::string::npos)
-					s_settings_interface.SetBoolValue("EmuCore/GS", "savei", true);
+					s_settings_interface.SetBoolValue("EmuCore/GS", "SaveInfo", true);
 				continue;
 			}
 			else if (CHECK_ARG_PARAM("-dumprange"))
@@ -550,9 +568,9 @@ bool GSRunner::ParseCommandLineArgs(int argc, char* argv[], VMBootParameters& pa
 				{
 					by = std::max(1, StringUtil::FromChars<int>(split[2]).value_or(1));
 				}
-				s_settings_interface.SetIntValue("EmuCore/GS", "saven", start);
-				s_settings_interface.SetIntValue("EmuCore/GS", "savel", num);
-				s_settings_interface.SetIntValue("EmuCore/GS", "saveb", by);
+				s_settings_interface.SetIntValue("EmuCore/GS", "SaveDrawStart", start);
+				s_settings_interface.SetIntValue("EmuCore/GS", "SaveDrawCount", num);
+				s_settings_interface.SetIntValue("EmuCore/GS", "SaveDrawBy", by);
 				continue;
 			}
 			else if (CHECK_ARG_PARAM("-dumprangef"))
@@ -575,9 +593,9 @@ bool GSRunner::ParseCommandLineArgs(int argc, char* argv[], VMBootParameters& pa
 				{
 					by = std::max(1, StringUtil::FromChars<int>(split[2]).value_or(1));
 				}
-				s_settings_interface.SetIntValue("EmuCore/GS", "savenf", start);
-				s_settings_interface.SetIntValue("EmuCore/GS", "savelf", num);
-				s_settings_interface.SetIntValue("EmuCore/GS", "savebf", by);
+				s_settings_interface.SetIntValue("EmuCore/GS", "SaveFrameStart", start);
+				s_settings_interface.SetIntValue("EmuCore/GS", "SaveFrameCount", num);
+				s_settings_interface.SetIntValue("EmuCore/GS", "SaveFrameBy", by);
 				continue;
 			}
 			else if (CHECK_ARG_PARAM("-dumpdirhw"))

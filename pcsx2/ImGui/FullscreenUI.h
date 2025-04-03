@@ -32,6 +32,8 @@ namespace FullscreenUI
 	void ReturnToPreviousWindow();
 	void ReturnToMainWindow();
 	void SetStandardSelectionFooterText(bool back_instead_of_cancel);
+	void LocaleChanged();
+	void GamepadLayoutChanged();
 
 	void Shutdown(bool clear_state);
 	void Render();
@@ -51,4 +53,7 @@ namespace Host
 
 	void OnCoverDownloaderOpenRequested();
 	void OnCreateMemoryCardOpenRequested();
+
+	/// Did Playstation in the currently selected locale use circle as confirm
+	bool LocaleCircleConfirm();
 } // namespace Host

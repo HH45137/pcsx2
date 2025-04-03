@@ -474,7 +474,7 @@ void VMManager::UpdateLoggingSettings(SettingsInterface& si)
 
 	const bool system_console_enabled = !s_log_block_system_console && si.GetBoolValue("Logging", "EnableSystemConsole", false);
 	const bool log_window_enabled = !s_log_block_system_console && si.GetBoolValue("Logging", "EnableLogWindow", false);
-	const bool file_logging_enabled = s_log_force_file_log || si.GetBoolValue("Logging", "EnableFileLogging", false);
+	const bool file_logging_enabled = s_log_force_file_log || si.GetBoolValue("Logging", "EnableFileLogging", true);
 
 	if (system_console_enabled != Log::IsConsoleOutputEnabled())
 		Log::SetConsoleOutputLevel(system_console_enabled ? level : LOGLEVEL_NONE);
@@ -518,7 +518,7 @@ void VMManager::UpdateLoggingSettings(SettingsInterface& si)
 void VMManager::SetDefaultLoggingSettings(SettingsInterface& si)
 {
 	si.SetBoolValue("Logging", "EnableSystemConsole", false);
-	si.SetBoolValue("Logging", "EnableFileLogging", false);
+	si.SetBoolValue("Logging", "EnableFileLogging", true);
 	si.SetBoolValue("Logging", "EnableTimestamps", true);
 	si.SetBoolValue("Logging", "EnableVerbose", false);
 	si.SetBoolValue("Logging", "EnableEEConsole", false);
@@ -624,10 +624,10 @@ void VMManager::ReloadInputSources()
 		LoadInputBindings(*si, lock);
 }
 
-void VMManager::ReloadInputBindings()
+void VMManager::ReloadInputBindings(bool force)
 {
 	// skip loading bindings if we're not running, since it'll get done on startup anyway
-	if (!HasValidVM())
+	if (!force && !HasValidVM())
 		return;
 
 	FPControlRegisterBackup fpcr_backup(FPControlRegister::GetDefault());
@@ -662,19 +662,19 @@ void VMManager::LoadInputBindings(SettingsInterface& si, std::unique_lock<std::m
 		const bool use_profile_hotkeys = isi->GetBoolValue("Pad", "UseProfileHotkeyBindings", false);
 		if (use_profile_hotkeys)
 		{
-			InputManager::ReloadBindings(si, *isi, *isi);
+			InputManager::ReloadBindings(si, *isi, *isi, true, true);
 		}
 		else
 		{
 			// Temporarily disable the input profile layer, so it doesn't take precedence.
 			Host::Internal::SetInputSettingsLayer(nullptr, lock);
-			InputManager::ReloadBindings(si, *isi, si);
+			InputManager::ReloadBindings(si, *isi, si, true, false);
 			Host::Internal::SetInputSettingsLayer(s_input_settings_interface.get(), lock);
 		}
 	}
 	else
 	{
-		InputManager::ReloadBindings(si, si, si);
+		InputManager::ReloadBindings(si, si, si, false, false);
 	}
 }
 
@@ -3610,7 +3610,7 @@ void VMManager::ReloadPINE()
 	PINEServer::Deinitialize();
 
 	if (EmuConfig.EnablePINE)
-		PINEServer::Initialize();
+		PINEServer::Initialize(EmuConfig.PINESlot);
 }
 
 void VMManager::InitializeDiscordPresence()

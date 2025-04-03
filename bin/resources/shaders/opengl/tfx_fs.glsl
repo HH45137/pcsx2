@@ -25,7 +25,8 @@
 #define SW_AD_TO_HW (PS_BLEND_C == 1 && PS_A_MASKED)
 #define PS_PRIMID_INIT (PS_DATE == 1 || PS_DATE == 2)
 #define NEEDS_RT_EARLY (PS_TEX_IS_FB == 1 || PS_DATE >= 5)
-#define NEEDS_RT (NEEDS_RT_EARLY || (!PS_PRIMID_INIT && (PS_FBMASK || SW_BLEND_NEEDS_RT || SW_AD_TO_HW)))
+#define NEEDS_RT_FOR_AFAIL (PS_AFAIL == 3 && PS_NO_COLOR1)
+#define NEEDS_RT (NEEDS_RT_EARLY || NEEDS_RT_FOR_AFAIL || (!PS_PRIMID_INIT && (PS_FBMASK || SW_BLEND_NEEDS_RT || SW_AD_TO_HW)))
 #define NEEDS_TEX (PS_TFX != 4)
 
 layout(std140, binding = 0) uniform cb21
@@ -111,7 +112,7 @@ layout(binding = 3) uniform sampler2D img_prim_min;
 //layout(pixel_center_integer) in vec4 gl_FragCoord;
 #endif
 
-vec4 fetch_rt()
+vec4 sample_from_rt()
 {
 #if !NEEDS_RT
 	return vec4(0.0);
@@ -127,7 +128,7 @@ vec4 fetch_rt()
 vec4 sample_c(vec2 uv)
 {
 #if PS_TEX_IS_FB == 1
-	return fetch_rt();
+	return sample_from_rt();
 #elif PS_REGION_RECT
 	return texelFetch(TextureSampler, ivec2(uv), 0);
 #else
@@ -312,7 +313,7 @@ int fetch_raw_depth()
 	float multiplier = exp2(32.0f);
 
 #if PS_TEX_IS_FB == 1
-	return int(fetch_rt().r * multiplier);
+	return int(sample_from_rt().r * multiplier);
 #else
 	return int(texelFetch(TextureSampler, ivec2(gl_FragCoord.xy), 0).r * multiplier);
 #endif
@@ -321,7 +322,7 @@ int fetch_raw_depth()
 vec4 fetch_raw_color()
 {
 #if PS_TEX_IS_FB == 1
-	return fetch_rt();
+	return sample_from_rt();
 #else
 	return texelFetch(TextureSampler, ivec2(gl_FragCoord.xy), 0);
 #endif
@@ -697,8 +698,6 @@ vec4 ps_color()
 	
 	vec4 C = tfx(T, PSin.c);
 
-	atst(C);
-
 	fog(C, PSin.t_float.z);
 
 	return C;
@@ -709,9 +708,9 @@ void ps_fbmask(inout vec4 C)
 	// FIXME do I need special case for 16 bits
 #if PS_FBMASK
 	#if PS_HDR == 1
-		vec4 RT = trunc(fetch_rt() * 65535.0f);
+		vec4 RT = trunc(sample_from_rt() * 65535.0f);
 	#else
-		vec4 RT = trunc(fetch_rt() * 255.0f + 0.1f);
+		vec4 RT = trunc(sample_from_rt() * 255.0f + 0.1f);
 	#endif
 	C = vec4((uvec4(C) & ~FbMask) | (uvec4(RT) & FbMask));
 #endif
@@ -799,7 +798,7 @@ float As = As_rgba.a;
 #endif
 
 #if SW_BLEND_NEEDS_RT
-	vec4 RT = fetch_rt();
+	vec4 RT = sample_from_rt();
 #else
 	// Not used, but we define it to make the selection below simpler.
 	vec4 RT = vec4(0.0f);
@@ -974,9 +973,9 @@ void ps_main()
 
 #if PS_WRITE_RG == 1
 	// Pseudo 16 bits access.
-	float rt_a = fetch_rt().g;
+	float rt_a = sample_from_rt().g;
 #else
-	float rt_a = fetch_rt().a;
+	float rt_a = sample_from_rt().a;
 #endif
 
 #if (PS_DATE & 3) == 1
@@ -1028,9 +1027,9 @@ void ps_main()
 
 #if SW_AD_TO_HW
 	#if PS_RTA_CORRECTION
-		vec4 RT = trunc(fetch_rt() * 128.0f + 0.1f);
+		vec4 RT = trunc(sample_from_rt() * 128.0f + 0.1f);
 	#else
-		vec4 RT = trunc(fetch_rt() * 255.0f + 0.1f);
+		vec4 RT = trunc(sample_from_rt() * 255.0f + 0.1f);
 	#endif
 
 	vec4 alpha_blend = vec4(RT.a / 128.0f);
@@ -1116,7 +1115,7 @@ void ps_main()
 
 	ps_fbmask(C);
 
-#if PS_AFAIL == 3 // RGB_ONLY
+#if PS_AFAIL == 3 && !PS_NO_COLOR1 // RGB_ONLY
 	// Use alpha blend factor to determine whether to update A.
 	alpha_blend.a = float(atst_pass);
 #endif
@@ -1131,6 +1130,10 @@ void ps_main()
 		SV_Target0.rgb = vec3(C.rgb / 65535.0f);
 	#else
 		SV_Target0.rgb = C.rgb / 255.0f;
+	#endif
+	#if PS_AFAIL == 3 && !PS_NO_COLOR1 // RGB_ONLY, no dual src blend
+		if (!atst_pass)
+			SV_Target0.a = sample_from_rt().a;
 	#endif
 	#if !PS_NO_COLOR1
 		SV_Target1 = alpha_blend;

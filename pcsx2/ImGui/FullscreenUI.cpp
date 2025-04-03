@@ -237,6 +237,7 @@ namespace FullscreenUI
 	static void DrawAboutWindow();
 	static void OpenAboutWindow();
 	static void GetStandardSelectionFooterText(SmallStringBase& dest, bool back_instead_of_cancel);
+	static void ApplyConfirmSetting(const SettingsInterface* bsi = nullptr);
 
 	static MainWindowType s_current_main_window = MainWindowType::None;
 	static PauseSubMenu s_current_pause_submenu = PauseSubMenu::None;
@@ -504,18 +505,23 @@ void FullscreenUI::GetStandardSelectionFooterText(SmallStringBase& dest, bool ba
 {
 	if (IsGamepadInputSource())
 	{
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		ImGuiFullscreen::CreateFooterTextString(
 			dest,
-			std::array{std::make_pair(ICON_PF_DPAD_UP_DOWN, FSUI_VSTR("Change Selection")),
-				std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-				std::make_pair(ICON_PF_BUTTON_CIRCLE, back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel"))});
+			std::array{
+				std::make_pair(ICON_PF_DPAD_UP_DOWN, FSUI_VSTR("Change Selection")),
+				std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+				std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel")),
+			});
 	}
 	else
 	{
 		ImGuiFullscreen::CreateFooterTextString(
-			dest, std::array{std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
+			dest, std::array{
+					  std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
 					  std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-					  std::make_pair(ICON_PF_ESC, back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel"))});
+					  std::make_pair(ICON_PF_ESC, back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel")),
+				  });
 	}
 }
 
@@ -535,19 +541,25 @@ void ImGuiFullscreen::GetFileSelectorHelpText(SmallStringBase& dest)
 {
 	if (IsGamepadInputSource())
 	{
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		ImGuiFullscreen::CreateFooterTextString(
-			dest, std::array{std::make_pair(ICON_PF_DPAD_UP_DOWN, FSUI_VSTR("Change Selection")),
+			dest, std::array{
+					  std::make_pair(ICON_PF_DPAD_UP_DOWN, FSUI_VSTR("Change Selection")),
 					  std::make_pair(ICON_PF_BUTTON_TRIANGLE, FSUI_VSTR("Parent Directory")),
-					  std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-					  std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Cancel"))});
+					  std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+					  std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Cancel")),
+				  });
 	}
 	else
 	{
 		ImGuiFullscreen::CreateFooterTextString(
 			dest,
-			std::array{std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
+			std::array{
+				std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
 				std::make_pair(ICON_PF_BACKSPACE, FSUI_VSTR("Parent Directory")),
-				std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")), std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel"))});
+				std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
+				std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel")),
+			});
 	}
 }
 
@@ -555,16 +567,92 @@ void ImGuiFullscreen::GetInputDialogHelpText(SmallStringBase& dest)
 {
 	if (IsGamepadInputSource())
 	{
-		CreateFooterTextString(dest, std::array{std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
-										 std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-										 std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Cancel"))});
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
+		CreateFooterTextString(dest, std::array{
+										 std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
+										 std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+										 std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Cancel")),
+									 });
 	}
 	else
 	{
-		CreateFooterTextString(dest, std::array{std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
+		CreateFooterTextString(dest, std::array{
+										 std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
 										 std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-										 std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel"))});
+										 std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel")),
+									 });
 	}
+}
+
+void FullscreenUI::ApplyConfirmSetting(const SettingsInterface* bsi)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	SmallString swap_mode;
+	if (bsi)
+		swap_mode = bsi->GetSmallStringValue("UI", "SwapOKFullscreenUI", "auto");
+	else
+		swap_mode = Host::GetBaseSmallStringSettingValue("UI", "SwapOKFullscreenUI", "auto");
+
+	if (swap_mode == "true")
+		io.ConfigNavSwapGamepadButtons = true;
+	else if (swap_mode == "false")
+		io.ConfigNavSwapGamepadButtons = false;
+	else if (swap_mode == "auto")
+	{
+		// Check language
+		if (Host::LocaleCircleConfirm())
+		{
+			io.ConfigNavSwapGamepadButtons = true;
+			return;
+		}
+
+		// Check BIOS
+		SmallString bios_selection;
+		if (bsi)
+			bios_selection = bsi->GetSmallStringValue("Filenames", "BIOS", "");
+		else
+			bios_selection = Host::GetBaseSmallStringSettingValue("Filenames", "BIOS", "");
+
+		if (bios_selection != "")
+		{
+			u32 bios_version, bios_region;
+			std::string bios_description, bios_zone;
+			if (IsBIOS(Path::Combine(EmuFolders::Bios, bios_selection).c_str(), bios_version, bios_description, bios_region, bios_zone))
+			{
+				// Japan, Asia, China
+				if (bios_region == 0 || bios_region == 4 || bios_region == 6)
+				{
+					io.ConfigNavSwapGamepadButtons = true;
+					return;
+				}
+			}
+		}
+
+		// Check gamepad
+		const InputLayout layout = ImGuiFullscreen::GetGamepadLayout();
+		if (layout == InputLayout::Nintendo)
+		{
+			io.ConfigNavSwapGamepadButtons = true;
+			return;
+		}
+
+		// X is confirm
+		io.ConfigNavSwapGamepadButtons = false;
+		return;
+	}
+	// Invalid setting
+	else
+		io.ConfigNavSwapGamepadButtons = false;
+}
+
+void FullscreenUI::LocaleChanged()
+{
+	ApplyConfirmSetting();
+}
+
+void FullscreenUI::GamepadLayoutChanged()
+{
+	ApplyConfirmSetting();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -579,8 +667,9 @@ bool FullscreenUI::Initialize()
 	if (s_tried_to_initialize)
 		return false;
 
-	ImGuiFullscreen::SetTheme(Host::GetBaseBoolSettingValue("UI", "UseLightFullscreenUITheme", false));
+	ImGuiFullscreen::SetTheme(Host::GetBaseStringSettingValue("UI", "FullscreenUITheme", "Dark"));
 	ImGuiFullscreen::UpdateLayoutScale();
+	ApplyConfirmSetting();
 
 	if (!ImGuiManager::AddFullscreenFontsIfMissing() || !ImGuiFullscreen::Initialize("fullscreenui/placeholder.png") || !LoadResources())
 	{
@@ -632,6 +721,8 @@ void FullscreenUI::CheckForConfigChanges(const Pcsx2Config& old_config)
 	if (!IsInitialized())
 		return;
 
+	ImGuiFullscreen::SetTheme(Host::GetBaseStringSettingValue("UI", "FullscreenUITheme", "Dark"));
+
 	// If achievements got disabled, we might have the menu open...
 	// That means we're going to be reaching achievement state.
 	if (old_config.Achievements.Enabled && !EmuConfig.Achievements.Enabled)
@@ -644,6 +735,13 @@ void FullscreenUI::CheckForConfigChanges(const Pcsx2Config& old_config)
 			}
 		});
 		MTGS::WaitGS(false, false, false);
+	}
+
+	if (old_config.FullpathToBios() != EmuConfig.FullpathToBios())
+	{
+		MTGS::RunOnGSThread([]() {
+			ApplyConfirmSetting();
+		});
 	}
 }
 
@@ -1306,13 +1404,14 @@ void FullscreenUI::DrawLandingWindow()
 
 	if (IsGamepadInputSource())
 	{
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		SetFullscreenFooterText(std::array{
 			std::make_pair(ICON_PF_SELECT_SHARE, FSUI_VSTR("About")),
 			std::make_pair(ICON_PF_DPAD_LEFT_RIGHT, FSUI_VSTR("Navigate")),
 			std::make_pair(ICON_PF_BUTTON_TRIANGLE, FSUI_VSTR("Game List")),
 			std::make_pair(ICON_PF_BUTTON_SQUARE, FSUI_VSTR("Toggle Fullscreen")),
-			std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Exit"))
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Exit")),
 		});
 	}
 	else
@@ -1323,7 +1422,7 @@ void FullscreenUI::DrawLandingWindow()
 			std::make_pair(ICON_PF_ARROW_LEFT ICON_PF_ARROW_RIGHT, FSUI_VSTR("Navigate")),
 			std::make_pair(ICON_PF_SPACE, FSUI_VSTR("Game List")),
 			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Exit"))
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Exit")),
 		});
 	}
 }
@@ -1378,17 +1477,22 @@ void FullscreenUI::DrawStartGameWindow()
 
 	if (IsGamepadInputSource())
 	{
-		SetFullscreenFooterText(std::array{std::make_pair(ICON_PF_DPAD_LEFT_RIGHT, FSUI_VSTR("Navigate")),
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
+		SetFullscreenFooterText(std::array{
+			std::make_pair(ICON_PF_DPAD_LEFT_RIGHT, FSUI_VSTR("Navigate")),
 			std::make_pair(ICON_PF_BUTTON_SQUARE, FSUI_VSTR("Load Global State")),
-			std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back"))});
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back")),
+		});
 	}
 	else
 	{
-		SetFullscreenFooterText(std::array{std::make_pair(ICON_PF_ARROW_LEFT ICON_PF_ARROW_RIGHT, FSUI_VSTR("Navigate")),
+		SetFullscreenFooterText(std::array{
+			std::make_pair(ICON_PF_ARROW_LEFT ICON_PF_ARROW_RIGHT, FSUI_VSTR("Navigate")),
 			std::make_pair(ICON_PF_F1, FSUI_VSTR("Load Global State")),
 			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back"))});
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back")),
+		});
 	}
 }
 
@@ -1430,19 +1534,20 @@ void FullscreenUI::DrawExitWindow()
 
 	if (IsGamepadInputSource())
 	{
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		SetFullscreenFooterText(std::array{
 			std::make_pair(ICON_PF_DPAD_LEFT_RIGHT, FSUI_VSTR("Navigate")),
-			std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back"))}
-		);
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back")),
+		});
 	}
 	else
 	{
 		SetFullscreenFooterText(std::array{
 			std::make_pair(ICON_PF_ARROW_LEFT ICON_PF_ARROW_RIGHT, FSUI_VSTR("Navigate")),
 			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back"))}
-		);
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back")),
+		});
 	}
 }
 
@@ -1518,7 +1623,9 @@ void FullscreenUI::DrawInputBindingButton(
 		return;
 
 	if (oneline)
-		InputManager::PrettifyInputBinding(value);
+		InputManager::PrettifyInputBinding(value, true);
+	else
+		InputManager::PrettifyInputBinding(value, false);
 
 	if (show_type)
 	{
@@ -2208,11 +2315,30 @@ void FullscreenUI::DrawIntRectSetting(SettingsInterface* bsi, const char* title,
 	bool is_open = true;
 	if (ImGui::BeginPopupModal(title, &is_open, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove))
 	{
-		static constexpr const char* labels[4] = {FSUI_NSTR("Left: "), FSUI_NSTR("Top: "), FSUI_NSTR("Right: "), FSUI_NSTR("Bottom: ")};
-		const char* keys[4] = {left_key, top_key, right_key, bottom_key};
-		int defaults[4] = {default_left, default_top, default_right, default_bottom};
-		s32 values[4] = {static_cast<s32>(left_value.value_or(default_left)), static_cast<s32>(top_value.value_or(default_top)),
-			static_cast<s32>(right_value.value_or(default_right)), static_cast<s32>(bottom_value.value_or(default_bottom))};
+		static constexpr const char* labels[4] = {
+			FSUI_NSTR("Left: "),
+			FSUI_NSTR("Top: "),
+			FSUI_NSTR("Right: "),
+			FSUI_NSTR("Bottom: "),
+		};
+		const char* keys[4] = {
+			left_key,
+			top_key,
+			right_key,
+			bottom_key,
+		};
+		int defaults[4] = {
+			default_left,
+			default_top,
+			default_right,
+			default_bottom,
+		};
+		s32 values[4] = {
+			static_cast<s32>(left_value.value_or(default_left)),
+			static_cast<s32>(top_value.value_or(default_top)),
+			static_cast<s32>(right_value.value_or(default_right)),
+			static_cast<s32>(bottom_value.value_or(default_bottom)),
+		};
 
 		BeginMenuButtons();
 
@@ -2835,21 +2961,69 @@ void FullscreenUI::DrawSettingsWindow()
 	{
 		static constexpr float ITEM_WIDTH = 25.0f;
 
-		static constexpr const char* global_icons[] = {ICON_FA_TV, ICON_PF_MICROCHIP, ICON_PF_GEARS_OPTIONS_SETTINGS, ICON_PF_PICTURE,
-			ICON_PF_SOUND, ICON_PF_MEMORY_CARD, ICON_PF_GAMEPAD_ALT, ICON_PF_KEYBOARD_ALT, ICON_FA_TROPHY, ICON_FA_FOLDER_OPEN, ICON_FA_EXCLAMATION_TRIANGLE};
-		static constexpr const char* per_game_icons[] = {ICON_FA_INFO, ICON_PF_GEARS_OPTIONS_SETTINGS, ICON_FA_BAND_AID, ICON_PF_INFINITY,
-			ICON_PF_PICTURE, ICON_PF_SOUND, ICON_PF_MEMORY_CARD, ICON_FA_EXCLAMATION_TRIANGLE};
-		static constexpr SettingsPage global_pages[] = {SettingsPage::Interface, SettingsPage::BIOS, SettingsPage::Emulation,
-			SettingsPage::Graphics, SettingsPage::Audio, SettingsPage::MemoryCard, SettingsPage::Controller, SettingsPage::Hotkey,
-			SettingsPage::Achievements, SettingsPage::Folders, SettingsPage::Advanced};
-		static constexpr SettingsPage per_game_pages[] = {SettingsPage::Summary, SettingsPage::Emulation, SettingsPage::Patches,
-			SettingsPage::Cheats, SettingsPage::Graphics, SettingsPage::Audio, SettingsPage::MemoryCard,
-			SettingsPage::GameFixes};
-		static constexpr const char* titles[] = {FSUI_NSTR("Summary"), FSUI_NSTR("Interface Settings"), FSUI_NSTR("BIOS Settings"),
-			FSUI_NSTR("Emulation Settings"), FSUI_NSTR("Graphics Settings"), FSUI_NSTR("Audio Settings"), FSUI_NSTR("Memory Card Settings"),
-			FSUI_NSTR("Controller Settings"), FSUI_NSTR("Hotkey Settings"), FSUI_NSTR("Achievements Settings"),
-			FSUI_NSTR("Folder Settings"), FSUI_NSTR("Advanced Settings"), FSUI_NSTR("Patches"), FSUI_NSTR("Cheats"),
-			FSUI_NSTR("Game Fixes")};
+		static constexpr const char* global_icons[] = {
+			ICON_FA_TV,
+			ICON_PF_MICROCHIP,
+			ICON_PF_GEARS_OPTIONS_SETTINGS,
+			ICON_PF_PICTURE,
+			ICON_PF_SOUND,
+			ICON_PF_MEMORY_CARD,
+			ICON_PF_GAMEPAD_ALT,
+			ICON_PF_KEYBOARD_ALT,
+			ICON_FA_TROPHY,
+			ICON_FA_FOLDER_OPEN,
+			ICON_FA_EXCLAMATION_TRIANGLE,
+		};
+		static constexpr const char* per_game_icons[] = {
+			ICON_FA_INFO,
+			ICON_PF_GEARS_OPTIONS_SETTINGS,
+			ICON_FA_BAND_AID,
+			ICON_PF_INFINITY,
+			ICON_PF_PICTURE,
+			ICON_PF_SOUND,
+			ICON_PF_MEMORY_CARD,
+			ICON_FA_EXCLAMATION_TRIANGLE,
+		};
+		static constexpr SettingsPage global_pages[] = {
+			SettingsPage::Interface,
+			SettingsPage::BIOS,
+			SettingsPage::Emulation,
+			SettingsPage::Graphics,
+			SettingsPage::Audio,
+			SettingsPage::MemoryCard,
+			SettingsPage::Controller,
+			SettingsPage::Hotkey,
+			SettingsPage::Achievements,
+			SettingsPage::Folders,
+			SettingsPage::Advanced,
+		};
+		static constexpr SettingsPage per_game_pages[] = {
+			SettingsPage::Summary,
+			SettingsPage::Emulation,
+			SettingsPage::Patches,
+			SettingsPage::Cheats,
+			SettingsPage::Graphics,
+			SettingsPage::Audio,
+			SettingsPage::MemoryCard,
+			SettingsPage::GameFixes,
+		};
+		static constexpr const char* titles[] = {
+			FSUI_NSTR("Summary"),
+			FSUI_NSTR("Interface Settings"),
+			FSUI_NSTR("BIOS Settings"),
+			FSUI_NSTR("Emulation Settings"),
+			FSUI_NSTR("Graphics Settings"),
+			FSUI_NSTR("Audio Settings"),
+			FSUI_NSTR("Memory Card Settings"),
+			FSUI_NSTR("Controller Settings"),
+			FSUI_NSTR("Hotkey Settings"),
+			FSUI_NSTR("Achievements Settings"),
+			FSUI_NSTR("Folder Settings"),
+			FSUI_NSTR("Advanced Settings"),
+			FSUI_NSTR("Patches"),
+			FSUI_NSTR("Cheats"),
+			FSUI_NSTR("Game Fixes"),
+		};
 
 		const u32 count = game_settings ? (show_advanced_settings ? std::size(per_game_pages) : (std::size(per_game_pages) - 1)) : std::size(global_pages);
 		const char* const* icons = game_settings ? per_game_icons : global_icons;
@@ -3008,11 +3182,13 @@ void FullscreenUI::DrawSettingsWindow()
 
 	if (IsGamepadInputSource())
 	{
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		SetFullscreenFooterText(std::array{
 			std::make_pair(ICON_PF_DPAD_LEFT_RIGHT, FSUI_VSTR("Change Page")),
 			std::make_pair(ICON_PF_DPAD_UP_DOWN, FSUI_VSTR("Navigate")),
-			std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back"))});
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back")),
+		});
 	}
 	else
 	{
@@ -3020,7 +3196,8 @@ void FullscreenUI::DrawSettingsWindow()
 			std::make_pair(ICON_PF_ARROW_LEFT ICON_PF_ARROW_RIGHT, FSUI_VSTR("Change Page")),
 			std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Navigate")),
 			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back"))});
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back")),
+		});
 	}
 }
 
@@ -3139,17 +3316,50 @@ void FullscreenUI::DrawSummarySettingsPage()
 
 void FullscreenUI::DrawInterfaceSettingsPage()
 {
+	static constexpr const char* s_theme_name[] = {
+		FSUI_NSTR("Dark"),
+		FSUI_NSTR("Light"),
+		FSUI_NSTR("Grey Matter"),
+		FSUI_NSTR("Untouched Lagoon"),
+		FSUI_NSTR("Baby Pastel"),
+		FSUI_NSTR("Pizza Time!"),
+		FSUI_NSTR("PCSX2 Blue"),
+		FSUI_NSTR("Scarlet Devil"),
+		FSUI_NSTR("Violet Angel"),
+		FSUI_NSTR("Cobalt Sky"),
+		FSUI_NSTR("AMOLED"),
+	};
+
+	static constexpr const char* s_theme_value[] = {
+		"Dark",
+		"Light",
+		"GreyMatter",
+		"UntouchedLagoon",
+		"BabyPastel",
+		"PizzaBrown",
+		"PCSX2Blue",
+		"ScarletDevil",
+		"VioletAngel",
+		"CobaltSky",
+		"AMOLED",
+	};
+
 	SettingsInterface* bsi = GetEditingSettingsInterface();
 
 	BeginMenuButtons();
 
-	MenuHeading(FSUI_CSTR("Behaviour"));
+	MenuHeading(FSUI_CSTR("Appearance"));
+	DrawStringListSetting(bsi, FSUI_ICONSTR(ICON_FA_PAINT_BRUSH, "Theme"),
+		FSUI_CSTR("Selects the color style to be used for Big Picture Mode."),
+		"UI", "FullscreenUITheme", "Dark", s_theme_name, s_theme_value, std::size(s_theme_name), true);
+	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_INFO_CIRCLE, "Use Save State Selector"),
+		FSUI_CSTR("Show a save state selector UI when switching slots instead of showing a notification bubble."),
+		"EmuCore", "UseSavestateSelector", true);
 
+	MenuHeading(FSUI_CSTR("Behaviour"));
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_PF_SNOOZE, "Inhibit Screensaver"),
 		FSUI_CSTR("Prevents the screen saver from activating and the host from sleeping while emulation is running."), "EmuCore",
 		"InhibitScreensaver", true);
-	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_USER_CIRCLE, "Enable Discord Presence"),
-		FSUI_CSTR("Shows the game you are currently playing as part of your profile on Discord."), "UI", "DiscordPresence", false);
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_PAUSE, "Pause On Start"), FSUI_CSTR("Pauses the emulator when a game is started."), "UI",
 		"StartPaused", false);
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_EYE, "Pause On Focus Loss"),
@@ -3169,14 +3379,55 @@ void FullscreenUI::DrawInterfaceSettingsPage()
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_ARCHIVE, "Create Save State Backups"),
 		FSUI_CSTR("Creates a backup copy of a save state if it already exists when the save is created. The backup copy has a .backup suffix"),
 		"EmuCore", "BackupSavestate", true);
-	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_INFO_CIRCLE, "Use Save State Selector"),
-		FSUI_CSTR("Show a save state selector UI when switching slots instead of showing a notification bubble."),
-		"EmuCore", "UseSavestateSelector", true);
-	if (DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_LIGHTBULB, "Use Light Theme"),
-			FSUI_CSTR("Uses a light coloured theme instead of the default dark theme."), "UI", "UseLightFullscreenUITheme", false))
+	// DrawStringListSetting dosn't have a callback for applying settings
+	const SmallString swap_mode = bsi->GetSmallStringValue("UI", "SwapOKFullscreenUI", "auto");
+	static constexpr const char* swap_names[] = {
+		FSUI_NSTR("Automatic"),
+		FSUI_NSTR("Enabled"),
+		FSUI_NSTR("Disabled"),
+	};
+	static constexpr const char* swap_values[] = {
+		"auto",
+		"true",
+		"false",
+	};
+	size_t swap_index = std::size(swap_values);
+	for (size_t i = 0; i < std::size(swap_values); i++)
 	{
-		ImGuiFullscreen::SetTheme(bsi->GetBoolValue("UI", "UseLightFullscreenUITheme", false));
+		if (swap_mode == swap_values[i])
+		{
+			swap_index = i;
+			break;
+		}
 	}
+
+	SmallStackString<256> swap_summery;
+	swap_summery.format(FSUI_FSTR("Uses {} as confirm when using a controller"), ICON_PF_BUTTON_CIRCLE);
+	if (MenuButtonWithValue(FSUI_ICONSTR(ICON_FA_GAMEPAD, "Swap OK/Cancel in Big Picture Mode"), swap_summery.c_str(),
+			(swap_index < std::size(swap_values)) ? Host::TranslateToCString(TR_CONTEXT, swap_names[swap_index]) : FSUI_CSTR("Unknown")))
+	{
+		ImGuiFullscreen::ChoiceDialogOptions cd_options;
+		cd_options.reserve(std::size(swap_values));
+		for (size_t i = 0; i < std::size(swap_values); i++)
+			cd_options.emplace_back(Host::TranslateToString(TR_CONTEXT, swap_names[i]), i == static_cast<size_t>(swap_index));
+
+		OpenChoiceDialog(FSUI_ICONSTR(ICON_FA_GAMEPAD, "Swap OK/Cancel in Big Picture Mode"), false, std::move(cd_options), [](s32 index, const std::string& title, bool checked) {
+			if (index >= 0)
+			{
+				auto lock = Host::GetSettingsLock();
+				SettingsInterface* bsi = GetEditingSettingsInterface(false);
+				bsi->SetStringValue("UI", "SwapOKFullscreenUI", swap_values[index]);
+				SetSettingsChanged(bsi);
+				ApplyConfirmSetting(bsi);
+			}
+
+			CloseChoiceDialog();
+		});
+	}
+
+	MenuHeading(FSUI_CSTR("Integration"));
+	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_USER_CIRCLE, "Enable Discord Presence"),
+		FSUI_CSTR("Shows the game you are currently playing as part of your profile on Discord."), "UI", "DiscordPresence", false);
 
 	MenuHeading(FSUI_CSTR("Game Display"));
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_TV, "Start Fullscreen"),
@@ -3291,6 +3542,7 @@ void FullscreenUI::DrawBIOSSettingsPage()
 				SettingsInterface* bsi = GetEditingSettingsInterface(game_settings);
 				bsi->SetStringValue("Filenames", "BIOS", values[index].c_str());
 				SetSettingsChanged(bsi);
+				ApplyConfirmSetting(bsi);
 				CloseChoiceDialog();
 			});
 	}
@@ -3637,7 +3889,13 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 		FSUI_NSTR("8x"),
 		FSUI_NSTR("16x"),
 	};
-	static constexpr const char* s_anisotropic_filtering_values[] = {"0", "2", "4", "8", "16"};
+	static constexpr const char* s_anisotropic_filtering_values[] = {
+		"0",
+		"2",
+		"4",
+		"8",
+		"16",
+	};
 	static constexpr const char* s_preloading_options[] = {
 		FSUI_NSTR("None"),
 		FSUI_NSTR("Partial"),
@@ -3701,7 +3959,7 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 		"EmuCore/GS", "ScreenshotFormat", static_cast<int>(GSScreenshotFormat::PNG), s_screenshot_formats, std::size(s_screenshot_formats),
 		true);
 	DrawIntRangeSetting(bsi, FSUI_CSTR("Screenshot Quality"), FSUI_CSTR("Selects the quality at which screenshots will be compressed."),
-		"EmuCore/GS", "ScreenshotQuality", 50, 1, 100, FSUI_CSTR("%d%%"));
+		"EmuCore/GS", "ScreenshotQuality", 90, 1, 100, FSUI_CSTR("%d%%"));
 	DrawIntRangeSetting(bsi, FSUI_CSTR("Vertical Stretch"), FSUI_CSTR("Increases or decreases the virtual picture size vertically."),
 		"EmuCore/GS", "StretchY", 100, 10, 300, FSUI_CSTR("%d%%"));
 	DrawIntRectSetting(bsi, FSUI_CSTR("Crop"), FSUI_CSTR("Crops the image, while respecting aspect ratio."), "EmuCore/GS", "CropLeft", 0,
@@ -3809,7 +4067,8 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 				FSUI_NSTR("Normal (Vertex)"),
 				FSUI_NSTR("Special (Texture)"),
 				FSUI_NSTR("Special (Texture - Aggressive)"),
-				FSUI_NSTR("Align To Native"),
+				FSUI_NSTR("Align to Native"),
+				FSUI_NSTR("Align to Native - with Texture Offset"),
 			};
 			static constexpr const char* s_native_scaling_options[] = {
 				FSUI_NSTR("Normal (Default)"),
@@ -3832,6 +4091,12 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 				FSUI_NSTR("Enabled (All Primitives)"),
 			};
 
+			static constexpr const char* s_gpu_clut_options[] = {
+				FSUI_NSTR("Disabled (Default)"),
+				FSUI_NSTR("Enabled (Exact Match)"),
+				FSUI_NSTR("Enabled (Check Inside Target)"),
+			};
+
 			DrawIntListSetting(bsi, FSUI_CSTR("CPU Sprite Render Size"),
 				FSUI_CSTR("Uses software renderer to draw texture decompression-like sprites."), "EmuCore/GS",
 				"UserHacks_CPUSpriteRenderBW", 0, s_cpu_sprite_render_bw_options, std::size(s_cpu_sprite_render_bw_options), true);
@@ -3841,6 +4106,9 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 			DrawIntListSetting(bsi, FSUI_CSTR("Software CLUT Render"),
 				FSUI_CSTR("Uses software renderer to draw texture CLUT points/sprites."), "EmuCore/GS", "UserHacks_CPUCLUTRender", 0,
 				s_cpu_clut_render_options, std::size(s_cpu_clut_render_options), true);
+			DrawIntListSetting(bsi, FSUI_CSTR("GPU Target CLUT"),
+				FSUI_CSTR("Try to detect when a game is drawing its own color palette and then renders it on the GPU with special handling."), "EmuCore/GS", "UserHacks_GPUTargetCLUTMode",
+				0, s_gpu_clut_options, std::size(s_gpu_clut_options), true, 0, manual_hw_fixes);
 			DrawIntSpinBoxSetting(bsi, FSUI_CSTR("Skip Draw Start"), FSUI_CSTR("Object range to skip drawing."), "EmuCore/GS",
 				"UserHacks_SkipDraw_Start", 0, 0, 5000, 1);
 			DrawIntSpinBoxSetting(bsi, FSUI_CSTR("Skip Draw End"), FSUI_CSTR("Object range to skip drawing."), "EmuCore/GS",
@@ -3967,9 +4235,16 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 		DrawIntRangeSetting(bsi, FSUI_CSTR("Shade Boost Saturation"), FSUI_CSTR("Adjusts saturation. 50 is normal."), "EmuCore/GS",
 			"ShadeBoost_Saturation", 50, 1, 100, "%d", shadeboost_active);
 
-		static constexpr const char* s_tv_shaders[] = {FSUI_NSTR("None (Default)"), FSUI_NSTR("Scanline Filter"),
-			FSUI_NSTR("Diagonal Filter"), FSUI_NSTR("Triangular Filter"), FSUI_NSTR("Wave Filter"), FSUI_NSTR("Lottes CRT"),
-			FSUI_NSTR("4xRGSS"), FSUI_NSTR("NxAGSS")};
+		static constexpr const char* s_tv_shaders[] = {
+			FSUI_NSTR("None (Default)"),
+			FSUI_NSTR("Scanline Filter"),
+			FSUI_NSTR("Diagonal Filter"),
+			FSUI_NSTR("Triangular Filter"),
+			FSUI_NSTR("Wave Filter"),
+			FSUI_NSTR("Lottes CRT"),
+			FSUI_NSTR("4xRGSS"),
+			FSUI_NSTR("NxAGSS"),
+		};
 		DrawIntListSetting(bsi, FSUI_CSTR("TV Shaders"), FSUI_CSTR("Applies a shader which replicates the visual effects of different styles of television set."), "EmuCore/GS", "TVShader", 0,
 			s_tv_shaders, std::size(s_tv_shaders), true);
 	}
@@ -3977,8 +4252,8 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 	static constexpr const char* s_gsdump_compression[] = {
 		FSUI_NSTR("Uncompressed"),
 		FSUI_NSTR("LZMA (xz)"),
-		FSUI_NSTR("Zstandard (zst)")
-		};
+		FSUI_NSTR("Zstandard (zst)"),
+	};
 
 	if (show_advanced_settings)
 	{
@@ -4314,11 +4589,11 @@ void FullscreenUI::DrawControllerSettingsPage()
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_COG, "Enable SDL Input Source"),
 		FSUI_CSTR("The SDL input source supports most controllers."), "InputSources", "SDL", true, true, false);
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_WIFI, "SDL DualShock 4 / DualSense Enhanced Mode"),
-		FSUI_CSTR("Provides vibration and LED control support over Bluetooth."), "InputSources", "SDLControllerEnhancedMode", false,
+		FSUI_CSTR("Provides vibration and LED control support over Bluetooth."), "InputSources", "SDLControllerEnhancedMode", true,
 		bsi->GetBoolValue("InputSources", "SDL", true), false);
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_LIGHTBULB, "SDL DualSense Player LED"),
-		FSUI_CSTR("Enable/Disable the Player LED on DualSense controllers."), "InputSources", "SDLPS5PlayerLED", false,
-		bsi->GetBoolValue("InputSources", "SDLControllerEnhancedMode", true), false);
+		FSUI_CSTR("Enable/Disable the Player LED on DualSense controllers."), "InputSources", "SDLPS5PlayerLED", true,
+		bsi->GetBoolValue("InputSources", "SDLControllerEnhancedMode", true), true);
 #ifdef _WIN32
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_COG, "SDL Raw Input"), FSUI_CSTR("Allow SDL to use raw access to input devices."),
 		"InputSources", "SDLRawInput", false, bsi->GetBoolValue("InputSources", "SDL", true), false);
@@ -4727,7 +5002,12 @@ void FullscreenUI::DrawFoldersSettingsPage()
 
 void FullscreenUI::DrawAdvancedSettingsPage()
 {
-	static constexpr const char* ee_rounding_mode_settings[] = {FSUI_NSTR("Nearest"), FSUI_NSTR("Negative"), FSUI_NSTR("Positive"), FSUI_NSTR("Chop/Zero (Default)")};
+	static constexpr const char* ee_rounding_mode_settings[] = {
+		FSUI_NSTR("Nearest"),
+		FSUI_NSTR("Negative"),
+		FSUI_NSTR("Positive"),
+		FSUI_NSTR("Chop/Zero (Default)"),
+	};
 
 	SettingsInterface* bsi = GetEditingSettingsInterface();
 
@@ -4748,7 +5028,7 @@ void FullscreenUI::DrawAdvancedSettingsPage()
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_TERMINAL, "System Console"),
 		FSUI_CSTR("Writes log messages to the system console (console window/standard output)."), "Logging", "EnableSystemConsole", false);
 	DrawToggleSetting(
-		bsi, FSUI_ICONSTR(ICON_FA_SCROLL, "File Logging"), FSUI_CSTR("Writes log messages to emulog.txt."), "Logging", "EnableFileLogging", false);
+		bsi, FSUI_ICONSTR(ICON_FA_SCROLL, "File Logging"), FSUI_CSTR("Writes log messages to emulog.txt."), "Logging", "EnableFileLogging", true);
 	DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_SCROLL, "Verbose Logging"), FSUI_CSTR("Writes dev log messages to log sinks."), "Logging", "EnableVerbose",
 		false, !IsDevBuild);
 
@@ -4768,14 +5048,14 @@ void FullscreenUI::DrawAdvancedSettingsPage()
 		FSUI_NSTR("Uncompressed"),
 		FSUI_NSTR("Deflate64"),
 		FSUI_NSTR("Zstandard"),
-		FSUI_NSTR("LZMA2")
+		FSUI_NSTR("LZMA2"),
 	};
 
 	static constexpr const char* s_savestate_compression_ratio[] = {
 		FSUI_NSTR("Low (Fast)"),
 		FSUI_NSTR("Medium (Recommended)"),
 		FSUI_NSTR("High"),
-		FSUI_NSTR("Very High (Slow, Not Recommended)")
+		FSUI_NSTR("Very High (Slow, Not Recommended)"),
 	};
 
 	if (show_advanced_settings)
@@ -5252,15 +5532,20 @@ void FullscreenUI::DrawPauseMenu(MainWindowType type)
 
 	if (IsGamepadInputSource())
 	{
-		SetFullscreenFooterText(std::array{std::make_pair(ICON_PF_DPAD_UP_DOWN, FSUI_VSTR("Change Selection")),
-			std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
-			std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Return To Game"))});
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
+		SetFullscreenFooterText(std::array{
+			std::make_pair(ICON_PF_DPAD_UP_DOWN, FSUI_VSTR("Change Selection")),
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Select")),
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Return To Game")),
+		});
 	}
 	else
 	{
 		SetFullscreenFooterText(std::array{
 			std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
-			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")), std::make_pair(ICON_PF_ESC, FSUI_VSTR("Return To Game"))});
+			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Return To Game")),
+		});
 	}
 }
 
@@ -5685,18 +5970,22 @@ void FullscreenUI::DrawSaveStateSelector(bool is_loading)
 	{
 		if (IsGamepadInputSource())
 		{
+			const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 			SetFullscreenFooterText(std::array{
 				std::make_pair(ICON_PF_DPAD, FSUI_VSTR("Select State")),
 				std::make_pair(ICON_PF_BUTTON_SQUARE, FSUI_VSTR("Options")),
-				std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Load/Save State")),
-				std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Cancel"))});
+				std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Load/Save State")),
+				std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Cancel")),
+			});
 		}
 		else
 		{
 			SetFullscreenFooterText(std::array{
 				std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN ICON_PF_ARROW_LEFT ICON_PF_ARROW_RIGHT, FSUI_VSTR("Select State")),
-				std::make_pair(ICON_PF_F1, FSUI_VSTR("Options")), std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Load/Save State")),
-				std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel"))});
+				std::make_pair(ICON_PF_F1, FSUI_VSTR("Options")),
+				std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Load/Save State")),
+				std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel")),
+			});
 		}
 	}
 }
@@ -5980,21 +6269,26 @@ void FullscreenUI::DrawGameListWindow()
 
 	if (IsGamepadInputSource())
 	{
+		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		SetFullscreenFooterText(std::array{
 			std::make_pair(ICON_PF_DPAD, FSUI_VSTR("Select Game")),
 			std::make_pair(ICON_PF_START, FSUI_VSTR("Settings")),
 			std::make_pair(ICON_PF_BUTTON_TRIANGLE, FSUI_VSTR("Change View")),
 			std::make_pair(ICON_PF_BUTTON_SQUARE, FSUI_VSTR("Launch Options")),
-			std::make_pair(ICON_PF_BUTTON_CROSS, FSUI_VSTR("Start Game")),
-			std::make_pair(ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back"))});
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CIRCLE : ICON_PF_BUTTON_CROSS, FSUI_VSTR("Start Game")),
+			std::make_pair(circleOK ? ICON_PF_BUTTON_CROSS : ICON_PF_BUTTON_CIRCLE, FSUI_VSTR("Back")),
+		});
 	}
 	else
 	{
 		SetFullscreenFooterText(std::array{
 			std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN ICON_PF_ARROW_LEFT ICON_PF_ARROW_RIGHT, FSUI_VSTR("Select Game")),
-			std::make_pair(ICON_PF_F1, FSUI_VSTR("Change View")), std::make_pair(ICON_PF_F2, FSUI_VSTR("Settings")),
-			std::make_pair(ICON_PF_F3, FSUI_VSTR("Launch Options")), std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Start Game")),
-			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back"))});
+			std::make_pair(ICON_PF_F1, FSUI_VSTR("Change View")),
+			std::make_pair(ICON_PF_F2, FSUI_VSTR("Settings")),
+			std::make_pair(ICON_PF_F3, FSUI_VSTR("Launch Options")),
+			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Start Game")),
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Back")),
+		});
 	}
 }
 
@@ -6966,9 +7260,11 @@ TRANSLATE_NOOP("FullscreenUI", "Input Profile");
 TRANSLATE_NOOP("FullscreenUI", "Options");
 TRANSLATE_NOOP("FullscreenUI", "Copies the current global settings to this game.");
 TRANSLATE_NOOP("FullscreenUI", "Clears all settings set for this game.");
+TRANSLATE_NOOP("FullscreenUI", "Appearance");
+TRANSLATE_NOOP("FullscreenUI", "Selects the color style to be used for Big Picture Mode.");
+TRANSLATE_NOOP("FullscreenUI", "Show a save state selector UI when switching slots instead of showing a notification bubble.");
 TRANSLATE_NOOP("FullscreenUI", "Behaviour");
 TRANSLATE_NOOP("FullscreenUI", "Prevents the screen saver from activating and the host from sleeping while emulation is running.");
-TRANSLATE_NOOP("FullscreenUI", "Shows the game you are currently playing as part of your profile on Discord.");
 TRANSLATE_NOOP("FullscreenUI", "Pauses the emulator when a game is started.");
 TRANSLATE_NOOP("FullscreenUI", "Pauses the emulator when you minimize the window or switch to another application, and unpauses when you switch back.");
 TRANSLATE_NOOP("FullscreenUI", "Pauses the emulator when a controller with bindings is disconnected.");
@@ -6976,8 +7272,8 @@ TRANSLATE_NOOP("FullscreenUI", "Pauses the emulator when you open the quick menu
 TRANSLATE_NOOP("FullscreenUI", "Determines whether a prompt will be displayed to confirm shutting down the emulator/game when the hotkey is pressed.");
 TRANSLATE_NOOP("FullscreenUI", "Automatically saves the emulator state when powering down or exiting. You can then resume directly from where you left off next time.");
 TRANSLATE_NOOP("FullscreenUI", "Creates a backup copy of a save state if it already exists when the save is created. The backup copy has a .backup suffix");
-TRANSLATE_NOOP("FullscreenUI", "Show a save state selector UI when switching slots instead of showing a notification bubble.");
-TRANSLATE_NOOP("FullscreenUI", "Uses a light coloured theme instead of the default dark theme.");
+TRANSLATE_NOOP("FullscreenUI", "Integration");
+TRANSLATE_NOOP("FullscreenUI", "Shows the game you are currently playing as part of your profile on Discord.");
 TRANSLATE_NOOP("FullscreenUI", "Game Display");
 TRANSLATE_NOOP("FullscreenUI", "Automatically switches to fullscreen mode when a game is started.");
 TRANSLATE_NOOP("FullscreenUI", "Switches between full screen and windowed when the window is double-clicked.");
@@ -7104,6 +7400,8 @@ TRANSLATE_NOOP("FullscreenUI", "CPU Sprite Render Level");
 TRANSLATE_NOOP("FullscreenUI", "Determines filter level for CPU sprite render.");
 TRANSLATE_NOOP("FullscreenUI", "Software CLUT Render");
 TRANSLATE_NOOP("FullscreenUI", "Uses software renderer to draw texture CLUT points/sprites.");
+TRANSLATE_NOOP("FullscreenUI", "GPU Target CLUT");
+TRANSLATE_NOOP("FullscreenUI", "Try to detect when a game is drawing its own color palette and then renders it on the GPU with special handling.");
 TRANSLATE_NOOP("FullscreenUI", "Skip Draw Start");
 TRANSLATE_NOOP("FullscreenUI", "Object range to skip drawing.");
 TRANSLATE_NOOP("FullscreenUI", "Skip Draw End");
@@ -7384,6 +7682,7 @@ TRANSLATE_NOOP("FullscreenUI", "Automatic mapping completed for {}.");
 TRANSLATE_NOOP("FullscreenUI", "Automatic mapping failed for {}.");
 TRANSLATE_NOOP("FullscreenUI", "Game settings initialized with global settings for '{}'.");
 TRANSLATE_NOOP("FullscreenUI", "Game settings have been cleared for '{}'.");
+TRANSLATE_NOOP("FullscreenUI", "Uses {} as confirm when using a controller");
 TRANSLATE_NOOP("FullscreenUI", "Slot {}");
 TRANSLATE_NOOP("FullscreenUI", "{} (Current)");
 TRANSLATE_NOOP("FullscreenUI", "{} (Folder)");
@@ -7428,6 +7727,19 @@ TRANSLATE_NOOP("FullscreenUI", "Folder Settings");
 TRANSLATE_NOOP("FullscreenUI", "Advanced Settings");
 TRANSLATE_NOOP("FullscreenUI", "Patches");
 TRANSLATE_NOOP("FullscreenUI", "Cheats");
+TRANSLATE_NOOP("FullscreenUI", "Dark");
+TRANSLATE_NOOP("FullscreenUI", "Light");
+TRANSLATE_NOOP("FullscreenUI", "Grey Matter");
+TRANSLATE_NOOP("FullscreenUI", "Untouched Lagoon");
+TRANSLATE_NOOP("FullscreenUI", "Baby Pastel");
+TRANSLATE_NOOP("FullscreenUI", "Pizza Time!");
+TRANSLATE_NOOP("FullscreenUI", "PCSX2 Blue");
+TRANSLATE_NOOP("FullscreenUI", "Scarlet Devil");
+TRANSLATE_NOOP("FullscreenUI", "Violet Angel");
+TRANSLATE_NOOP("FullscreenUI", "Cobalt Sky");
+TRANSLATE_NOOP("FullscreenUI", "AMOLED");
+TRANSLATE_NOOP("FullscreenUI", "Enabled");
+TRANSLATE_NOOP("FullscreenUI", "Disabled");
 TRANSLATE_NOOP("FullscreenUI", "2% [1 FPS (NTSC) / 1 FPS (PAL)]");
 TRANSLATE_NOOP("FullscreenUI", "10% [6 FPS (NTSC) / 5 FPS (PAL)]");
 TRANSLATE_NOOP("FullscreenUI", "25% [15 FPS (NTSC) / 12 FPS (PAL)]");
@@ -7550,13 +7862,13 @@ TRANSLATE_NOOP("FullscreenUI", "Sprites/Triangles");
 TRANSLATE_NOOP("FullscreenUI", "Blended Sprites/Triangles");
 TRANSLATE_NOOP("FullscreenUI", "1 (Normal)");
 TRANSLATE_NOOP("FullscreenUI", "2 (Aggressive)");
-TRANSLATE_NOOP("FullscreenUI", "Disabled");
 TRANSLATE_NOOP("FullscreenUI", "Inside Target");
 TRANSLATE_NOOP("FullscreenUI", "Merge Targets");
 TRANSLATE_NOOP("FullscreenUI", "Normal (Vertex)");
 TRANSLATE_NOOP("FullscreenUI", "Special (Texture)");
 TRANSLATE_NOOP("FullscreenUI", "Special (Texture - Aggressive)");
-TRANSLATE_NOOP("FullscreenUI", "Align To Native");
+TRANSLATE_NOOP("FullscreenUI", "Align to Native");
+TRANSLATE_NOOP("FullscreenUI", "Align to Native - with Texture Offset");
 TRANSLATE_NOOP("FullscreenUI", "Aggressive");
 TRANSLATE_NOOP("FullscreenUI", "Half");
 TRANSLATE_NOOP("FullscreenUI", "Force Bilinear");
@@ -7564,6 +7876,8 @@ TRANSLATE_NOOP("FullscreenUI", "Force Nearest");
 TRANSLATE_NOOP("FullscreenUI", "Disabled (Default)");
 TRANSLATE_NOOP("FullscreenUI", "Enabled (Sprites Only)");
 TRANSLATE_NOOP("FullscreenUI", "Enabled (All Primitives)");
+TRANSLATE_NOOP("FullscreenUI", "Enabled (Exact Match)");
+TRANSLATE_NOOP("FullscreenUI", "Enabled (Check Inside Target)");
 TRANSLATE_NOOP("FullscreenUI", "None (Default)");
 TRANSLATE_NOOP("FullscreenUI", "Sharpen Only (Internal Resolution)");
 TRANSLATE_NOOP("FullscreenUI", "Sharpen and Resize (Display Resolution)");
@@ -7630,8 +7944,9 @@ TRANSLATE_NOOP("FullscreenUI", "Select Disc Path");
 TRANSLATE_NOOP("FullscreenUI", "Cannot show details for games which were not scanned in the game list.");
 TRANSLATE_NOOP("FullscreenUI", "Copy Settings");
 TRANSLATE_NOOP("FullscreenUI", "Clear Settings");
+TRANSLATE_NOOP("FullscreenUI", "Theme");
+TRANSLATE_NOOP("FullscreenUI", "Use Save State Selector");
 TRANSLATE_NOOP("FullscreenUI", "Inhibit Screensaver");
-TRANSLATE_NOOP("FullscreenUI", "Enable Discord Presence");
 TRANSLATE_NOOP("FullscreenUI", "Pause On Start");
 TRANSLATE_NOOP("FullscreenUI", "Pause On Focus Loss");
 TRANSLATE_NOOP("FullscreenUI", "Pause On Controller Disconnection");
@@ -7639,8 +7954,8 @@ TRANSLATE_NOOP("FullscreenUI", "Pause On Menu");
 TRANSLATE_NOOP("FullscreenUI", "Confirm Shutdown");
 TRANSLATE_NOOP("FullscreenUI", "Save State On Shutdown");
 TRANSLATE_NOOP("FullscreenUI", "Create Save State Backups");
-TRANSLATE_NOOP("FullscreenUI", "Use Save State Selector");
-TRANSLATE_NOOP("FullscreenUI", "Use Light Theme");
+TRANSLATE_NOOP("FullscreenUI", "Swap OK/Cancel in Big Picture Mode");
+TRANSLATE_NOOP("FullscreenUI", "Enable Discord Presence");
 TRANSLATE_NOOP("FullscreenUI", "Start Fullscreen");
 TRANSLATE_NOOP("FullscreenUI", "Double-Click Toggles Fullscreen");
 TRANSLATE_NOOP("FullscreenUI", "Hide Cursor In Fullscreen");

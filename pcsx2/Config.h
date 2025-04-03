@@ -440,6 +440,7 @@ enum class GSHalfPixelOffset : u8
 	Special,
 	SpecialAggressive,
 	Native,
+	NativeWTexOffset,
 	MaxCount
 };
 
@@ -822,17 +823,17 @@ struct Pcsx2Config
 		u16 SWExtraThreads = 2;
 		u16 SWExtraThreadsHeight = 4;
 
-		int SaveN = 0;
-		int SaveL = 5000;
-		int SaveB = 1;
-		int SaveNF = 0;
-		int SaveLF = -1;
-		int SaveBF = 1;
+		int SaveDrawStart = 0;
+		int SaveDrawCount = 5000;
+		int SaveDrawBy = 1;
+		int SaveFrameStart = 0;
+		int SaveFrameCount = -1;
+		int SaveFrameBy = 1;
 
 		s8 ExclusiveFullscreenControl = -1;
 		GSScreenshotSize ScreenshotSize = GSScreenshotSize::WindowResolution;
 		GSScreenshotFormat ScreenshotFormat = GSScreenshotFormat::PNG;
-		int ScreenshotQuality = 50;
+		int ScreenshotQuality = 90;
 
 		std::string CaptureContainer = DEFAULT_CAPTURE_CONTAINER;
 		std::string VideoCaptureCodec;
@@ -1070,29 +1071,6 @@ struct Pcsx2Config
 		static std::optional<SpeedHack> ParseSpeedHackName(const std::string_view name);
 	};
 
-	struct DebugOptions
-	{
-		BITFIELD32()
-		bool
-			ShowDebuggerOnStart : 1;
-		bool
-			AlignMemoryWindowStart : 1;
-		BITFIELD_END
-
-		u8 FontWidth;
-		u8 FontHeight;
-		u32 WindowWidth;
-		u32 WindowHeight;
-		u32 MemoryViewBytesPerRow;
-
-
-		DebugOptions();
-		void LoadSave(SettingsWrapper& wrap);
-
-		bool operator==(const DebugOptions& right) const;
-		bool operator!=(const DebugOptions& right) const;
-	};
-
 	// ------------------------------------------------------------------------
 	struct DebugAnalysisOptions
 	{
@@ -1303,7 +1281,6 @@ struct Pcsx2Config
 	SpeedhackOptions Speedhacks;
 	GamefixOptions Gamefixes;
 	ProfilerOptions Profiler;
-	DebugOptions Debugger;
 	DebugAnalysisOptions DebuggerAnalysis;
 	EmulationSpeedOptions EmulationSpeed;
 	SavestateOptions Savestate;
@@ -1373,7 +1350,6 @@ namespace EmuFolders
 	extern std::string AppRoot;
 	extern std::string DataRoot;
 	extern std::string Settings;
-	extern std::string DebuggerSettings;
 	extern std::string Bios;
 	extern std::string Snapshots;
 	extern std::string Savestates;
@@ -1389,6 +1365,8 @@ namespace EmuFolders
 	extern std::string Textures;
 	extern std::string InputProfiles;
 	extern std::string Videos;
+	extern std::string DebuggerLayouts;
+	extern std::string DebuggerSettings;
 
 	/// Initializes critical folders (AppRoot, DataRoot, Settings). Call once on startup.
 	void SetAppRoot();
